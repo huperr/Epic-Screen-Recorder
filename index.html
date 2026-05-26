@@ -48,22 +48,22 @@
 
 <body>
 
-<h1>Epic Screen Recorder</h1>
+<h1>Epic Screen Recorder!!11</h1>
 
 <select id="quality">
-  <option value="high">High Quality 🔥</option>
-  <option value="low">Low Quality ⚡</option>
+  <option value="high">High Quality 😭</option>
+  <option value="low">Low Quality ✅👍</option>
 </select>
 
 <label>
   <input type="checkbox" id="mic">
-  Microphone
+  Microphone👽
 </label>
 
 <br>
 
-<button id="startBtn">Start Recording</button>
-<button id="stopBtn" disabled>Stop Recording</button>
+<button id="startBtn">Start Recording❤</button>
+<button id="stopBtn" disabled>Stop Recording🗣</button>
 
 <div id="timer">00:00</div>
 
@@ -118,10 +118,10 @@ async function createMixedStream(screenStream, micStream) {
   return destination.stream;
 }
 
-// DVD DRAW
+//  DRAW
 function drawDVD(ctx, canvas) {
-  const text = "DVD";
-  const fontSize = 60;
+  const text = "THANK YOU FOR USING MY SUPER EPIC SCREEN RECORDER";
+  const fontSize = 150;
 
   ctx.font = `bold ${fontSize}px Arial`;
   ctx.fillStyle = "#ffffff";
@@ -163,7 +163,7 @@ startBtn.onclick = async () => {
   const height = isLow ? 720 : 1080;
   const fps = isLow ? 15 : 30;
 
-  // RESET DVD POSITION
+  // RESET POSITION
   dvdX = 100;
   dvdY = 100;
   dvdVX = 3;
@@ -182,7 +182,7 @@ startBtn.onclick = async () => {
   drawInterval = setInterval(() => {
     ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
 
-    // FUNNY DVD TEXT OVERLAY 😂
+    // FUNNY text GO BRRRR
     drawDVD(ctx, canvas);
 
   }, 1000 / fps);
