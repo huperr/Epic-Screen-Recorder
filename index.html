@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Epic Screen Recorder 😱🔥</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #0f172a;
+      color: white;
+      padding: 25px;
+    }
+
+    button, select {
+      padding: 10px 15px;
+      margin: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    #startBtn { background: #22c55e; color: white; }
+    #stopBtn { background: #ef4444; color: white; }
+
+    video {
+      margin-top: 20px;
+      width: 80%;
+      max-width: 700px;
+      border-radius: 10px;
+      background: black;
+    }
+
+    #timer {
+      font-size: 18px;
+      margin-top: 10px;
+      color: #60a5fa;
+    }
+
+    #downloadLink {
+      display: block;
+      margin-top: 10px;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Epic Screen Recorder</h1>
+
+<select id="quality">
+  <option value="high">High Quality 🔥</option>
+  <option value="low">Low Quality ⚡</option>
+</select>
+
+<label>
+  <input type="checkbox" id="mic">
+  Microphone
+</label>
+
+<br>
+
+<button id="startBtn">Start Recording</button>
+<button id="stopBtn" disabled>Stop Recording</button>
+
+<div id="timer">00:00</div>
+
+<video id="video" controls></video>
+<a id="downloadLink"></a>
+
+<script>
+let mediaRecorder;
+let chunks = [];
+let timerInterval;
+let seconds = 0;
+
+let screenStream;
+let micStream;
+let canvasStream;
+let canvas, ctx, drawInterval;
+let tempVideo;
+
+// DVD STATE
+let dvdX = 100;
+let dvdY = 100;
+let dvdVX = 3;
+let dvdVY = 3;
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const video = document.getElementById("video");
+const downloadLink = document.getElementById("downloadLink");
+const timer = document.getElementById("timer");
+
+function formatTime(s) {
+  const m = String(Math.floor(s / 60)).padStart(2, "0");
+  const sec = String(s % 60).padStart(2, "0");
+  return `${m}:${sec}`;
+}
+
+// MIX AUDIO
+async function createMixedStream(screenStream, micStream) {
+  const audioCtx = new AudioContext();
+  const destination = audioCtx.createMediaStreamDestination();
+
+  if (screenStream.getAudioTracks().length > 0) {
+    const systemSource = audioCtx.createMediaStreamSource(screenStream);
+    systemSource.connect(destination);
+  }
+
+  if (micStream) {
+    const micSource = audioCtx.createMediaStreamSource(micStream);
+    micSource.connect(destination);
+  }
+
+  return destination.stream;
+}
+
+// DVD DRAW
+function drawDVD(ctx, canvas) {
+  const text = "DVD";
+  const fontSize = 60;
+
+  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.fillStyle = "#ffffff";
+
+  const textWidth = ctx.measureText(text).width;
+  const textHeight = fontSize;
+
+  dvdX += dvdVX;
+  dvdY += dvdVY;
+
+  if (dvdX + textWidth > canvas.width || dvdX < 0) dvdVX *= -1;
+  if (dvdY > canvas.height || dvdY - textHeight < 0) dvdVY *= -1;
+
+  ctx.fillText(text, dvdX, dvdY);
+}
+
+startBtn.onclick = async () => {
+  const quality = document.getElementById("quality").value;
+  const micOn = document.getElementById("mic").checked;
+
+  chunks = [];
+
+  // SCREEN
+  screenStream = await navigator.mediaDevices.getDisplayMedia({
+    video: true,
+    audio: true
+  });
+
+  // MIC
+  micStream = micOn
+    ? await navigator.mediaDevices.getUserMedia({ audio: true })
+    : null;
+
+  video.srcObject = screenStream;
+
+  // SETTINGS
+  const isLow = quality === "low";
+  const width = isLow ? 1280 : 1920;
+  const height = isLow ? 720 : 1080;
+  const fps = isLow ? 15 : 30;
+
+  // RESET DVD POSITION
+  dvdX = 100;
+  dvdY = 100;
+  dvdVX = 3;
+  dvdVY = 3;
+
+  // CANVAS
+  canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  ctx = canvas.getContext("2d");
+
+  tempVideo = document.createElement("video");
+  tempVideo.srcObject = screenStream;
+  await tempVideo.play();
+
+  drawInterval = setInterval(() => {
+    ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
+
+    // FUNNY DVD TEXT OVERLAY 😂
+    drawDVD(ctx, canvas);
+
+  }, 1000 / fps);
+
+  canvasStream = canvas.captureStream(fps);
+
+  const audioStream = await createMixedStream(screenStream, micStream);
+
+  const finalStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...audioStream.getAudioTracks()
+  ]);
+
+  mediaRecorder = new MediaRecorder(finalStream, {
+    mimeType: "video/webm;codecs=vp9",
+    videoBitsPerSecond: isLow ? 800000 : 8000000
+  });
+
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(chunks, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+
+    video.srcObject = null;
+    video.src = url;
+
+    downloadLink.href = url;
+    downloadLink.download = "recording.webm";
+    downloadLink.textContent = "Download Video";
+  };
+
+  mediaRecorder.start();
+
+  // TIMER
+  seconds = 0;
+  timer.innerText = "00:00";
+
+  timerInterval = setInterval(() => {
+    seconds++;
+    timer.innerText = formatTime(seconds);
+  }, 1000);
+
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+};
+
+stopBtn.onclick = () => {
+  mediaRecorder.stop();
+
+  clearInterval(timerInterval);
+  clearInterval(drawInterval);
+
+  screenStream.getTracks().forEach(t => t.stop());
+  if (micStream) micStream.getTracks().forEach(t => t.stop());
+
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+};
+</script>
+
+</body>
+</html>
